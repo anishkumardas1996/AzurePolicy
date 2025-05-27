@@ -1,0 +1,122 @@
+{
+  "mode": "All",
+  "policyRule": {
+    "if": {
+      "allOf": [
+        {
+          "field": "type",
+          "equals": "Microsoft.Network/virtualNetworks/subnets"
+        },
+        {
+          "field": "Microsoft.Network/virtualNetworks/subnets/networkSecurityGroup.id",
+          "exists": false
+        },
+        {
+          "field": "name",
+          "notEquals": "GatewaySubnet"
+        },
+        {
+          "field": "name",
+          "notEquals": "AzureFirewallSubnet"
+        },
+        {
+          "field": "name",
+          "notEquals": "AzureBastionSubnet"
+        }
+      ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]",
+      "details": {
+        "type": "Microsoft.Network/virtualNetworks/subnets",
+        "roleDefinitionIds": [
+          "/providers/Microsoft.Authorization/roleDefinitions/4d97b98b-1d4f-4787-a291-c67834d212e7"
+        ],
+        "existenceCondition": {
+          "field": "Microsoft.Network/virtualNetworks/subnets/networkSecurityGroup.id",
+          "exists": true
+        },
+        "deployment": {
+          "properties": {
+            "mode": "incremental",
+            "template": {
+              "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+              "contentVersion": "1.0.0.0",
+              "parameters": {
+                "vnetName": {
+                  "type": "string"
+                },
+                "subnetName": {
+                  "type": "string"
+                },
+                "subnetAddressPrefix": {
+                  "type": "string"
+                },
+                "nsgId": {
+                  "type": "string"
+                },
+                "location": {
+                  "type": "string"
+                }
+              },
+              "resources": [
+                {
+                  "type": "Microsoft.Network/virtualNetworks/subnets",
+                  "apiVersion": "2021-02-01",
+                  "name": "[concat(parameters('vnetName'), '/', parameters('subnetName'))]",
+                  "properties": {
+                    "addressPrefix": "[parameters('subnetAddressPrefix')]",
+                    "networkSecurityGroup": {
+                      "id": "[parameters('nsgId')]"
+                    }
+                  }
+                }
+              ]
+            },
+            "parameters": {
+              "vnetName": {
+                "value": "[first(split(field('fullName'), '/'))]"
+              },
+              "subnetName": {
+                "value": "[field('name')]"
+              },
+              "subnetAddressPrefix": {
+                "value": "[field('Microsoft.Network/virtualNetworks/subnets/addressPrefix')]"
+              },
+              "nsgId": {
+                "value": "[parameters('nsgResourceId')]"
+              },
+              "location": {
+                "value": "[field('location')]"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "parameters": {
+    "nsgResourceId": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Network Security Group Resource ID",
+        "description": "The full resource ID of the NSG to be associated with subnets"
+      }
+    },
+    "effect": {
+      "type": "String",
+      "defaultValue": "DeployIfNotExists",
+      "allowedValues": [
+        "DeployIfNotExists",
+        "AuditIfNotExists",
+        "Disabled"
+      ],
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      }
+    }
+  },
+  "displayName": "Associate NSG to subnets without NSG association",
+  "description": "This policy automatically associates a specified Network Security Group to subnets that do not have any NSG association. Excludes special subnets like GatewaySubnet, AzureFirewallSubnet, and AzureBastionSubnet."
+}
